@@ -1,0 +1,214 @@
+\documentclass[handout]{beamer}
+%
+% Choose how your presentation looks.
+%
+% For more themes, color themes and font themes, see:
+% http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
+%
+%\definecolor{UBCblue}{rgb}{0.04706, 0.13725, 0.26667} % Original UBC blue
+\definecolor{UBCblue}{rgb}{0.12706, 0.25725, 0.38667} % Lighter UBC blue
+\mode<presentation>
+{
+    \usetheme{Madrid}      % or try Darmstadt, Madrid, Warsaw, ...
+    % \usecolortheme{beaver} % or try albatross, beaver, crane, ...
+    \usecolortheme[named=UBCblue]{structure}
+    \useinnertheme{circles}
+    \usefonttheme{serif}  % or try serif, structurebold, ...
+    \setbeamertemplate{navigation symbols}{}
+    \setbeamertemplate{caption}[numbered]
+} 
+
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+
+%     Machine learning models have become increasingly powerful, but their predictions often lack reliable uncertainty estimates.
+%     This talk introduces split conformal prediction - a distribution-free framework for constructing prediction intervals with guaranteed coverage properties.
+%     We'll explore how this method leverages rank statistics and exchangeability to provide rigorous uncertainty quantification for any machine learning algorithm, without making assumptions about the underlying model or data distribution.
+% }
+\usepackage{listings}
+\usepackage[absolute, overlay]{textpos}
+\lstset
+{
+    language=[LaTeX]TeX,
+    breaklines=true,
+    basicstyle=\tt\scriptsize,
+    %commentstyle=\color{green}
+    keywordstyle=\color{blue},
+    %stringstyle=\color{black}
+    identifierstyle=\color{magenta},
+}
+
+\title[Edinburgh AI Society]{Uncertainty Quantification\\with Split Conformal Prediction}
+\author{Thomas Davies}
+\institute[]{Edinburgh AI Society Advanced Workshop}
+\date{November 4, 2024}
+
+\expandafter\def\expandafter\normalsize\expandafter{%
+    \normalsize%
+    \setlength\abovedisplayskip{10pt}%
+    \setlength\belowdisplayskip{-6pt}%
+    \setlength\abovedisplayshortskip{-8pt}%
+    \setlength\belowdisplayshortskip{2pt}%
+}
+% \AtBeginSection[]
+% {
+%   \begin{frame}<beamer>
+%     \frametitle{Outline}
+%     \tableofcontents[currentsection,currentsubsection]
+%   \end{frame}
+% }
+
+\begin{document}
+\begin{frame}
+    \titlepage
+    \begin{textblock*}{\textwidth}(0cm,4.3cm) % Adjust these coordinates as needed
+        \includegraphics[width=0.3\textwidth]{images/EdinAILogo.png}
+    \end{textblock*}
+\end{frame}
+
+% Uncomment these lines for an automatically generated outline.
+% \begin{frame}{Outline}
+%   \tableofcontents
+% \end{frame}
+
+
+\section{Introduction}
+
+\begin{frame}{Motivation}
+    \begin{itemize}
+        \item Machine learning appears to be able to solve most problems
+        % \begin{itemize}
+        % 	\item (\textit{lazy} $=$ \textit{to do things in the most efficient way})
+        % \end{itemize}
+        \pause
+        \item However we don't know how certain we are about the predictions we make
+        \pause
+        \item Can we do this?
+    \end{itemize}
+\end{frame}
+% add context for underlying dist
+\begin{frame}{The Goal}
+\begin{itemize}
+
+\item Given any supervised machine learning algorithm that maps paired training examples to a function:
+    \begin{equation}
+        (X_1,Y_1),\ldots, (X_n,Y_n) \mapsto \hat{f}_{1:n}
+    \end{equation}
+\pause
+\item For a new data point \(X_{n+1}\), we would like to construct a 95\% ``confidence set'' for \(Y_{n+1}\)
+\pause
+\item This is a (random) set \(C(X_{n+1})\) where we have that 
+\begin{equation*}
+    \mathbb{P}(Y_{n+1} \in C(X_{n+1})) = 0.95
+\end{equation*}
+\pause 
+\item Without any assumptions on our learning algorithm, or underlying model this seems impossible! 
+
+\end{itemize}
+\end{frame}
+
+\section{Rank Statistics}
+
+\begin{frame}{Motivation: Ranks of Random Variables}
+\begin{itemize}
+    \item Consider some i.i.d. real valued random variables $Z_1,\ldots,Z_{n+1}$
+    \pause
+    \item What is the probability that $Z_{n+1}$ is the $k$-th largest?
+    \pause
+    \item By symmetry (exchangeability), all the orderings are equally likely
+    \pause
+    \item Therefore:\\
+    \begin{equation}
+        \mathbb{P}(\text{Rank}(Z_{n+1}) = k) = \frac{1}{n+1}
+    \end{equation}
+    \pause
+    \item This holds regardless of the distribution of $Z_i$!
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A Note on Exchangeability}
+\begin{itemize}
+    \item Actually, we didn't need the i.i.d. assumption
+    \pause
+    \item We only need exchangeability for any permutation $\pi$:
+    \begin{equation*}
+        (Z_1,\ldots,Z_{n+1}) \overset{d}{=} (Z_{\pi(1)},\ldots,Z_{\pi(n+1)})
+    \end{equation*}
+    \pause
+    \item This is much weaker than i.i.d.
+    \pause
+    \item Example: Drawing without replacement from an urn
+    \begin{itemize}
+        \item Not independent (draws affect future probabilities)
+        \item But exchangeable (order doesn't matter)
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Building Confidence Intervals from Ranks}
+\begin{itemize}
+    \item If we have \(n+1\) exchangeable random variables, we know their ranks are uniform
+    \pause
+    \item Key insight: We can use this to build confidence intervals!
+    \pause
+    \item For a $(1-\alpha)$ confidence interval:
+    \begin{itemize}
+        \item We want $Z_{n+1}$ to be between the $\lceil \frac{\alpha}{2}(n+1) \rceil$-th and $\lfloor (1-\frac{\alpha}{2})(n+1) \rfloor$-th order statistics
+    \end{itemize}
+    \pause
+    \item Example: With n = 99 calibration points and $\alpha = 0.05$
+    \begin{itemize}
+        \item Lower bound: 3rd smallest value
+        \item Upper bound: 97th smallest value
+        \item Probability new point falls in this interval = $1-\alpha = 0.95$
+    \end{itemize}
+    \pause
+    \item This works regardless of the underlying distribution!
+\end{itemize}
+\end{frame}
+
+% \begin{frame}{Building Exchangeable Variables}
+% \begin{itemize}
+%     \item Let's apply this to machine learning predictions by trying to build some exchangeable random variables
+%     \pause
+%     \item If we have \(K\) pairs in our training set, we can train our model \(K\) times, leaving out one pair each time. 
+%     \pause 
+%     \item Denote the model trained on \((X_1, Y_1),\ldots (X_{i-1},Y_{i-1}),(X_{i+1}, Y_{i+1}), \ldots, (X_n, Y_n))\) by \(\hat{h}_i\)
+%     \pause
+%     \item The models themselves are now exchangeable!!!
+% \end{itemize}
+% \end{frame}
+
+
+\begin{frame}{Building Exchangeable Variables}
+\begin{itemize}
+    \item Let's apply this to machine learning predictions by trying to build some exchangeable random variables - let's look at regression first.
+        \pause
+    \item We split our training pairs into ``pure training data'' \(\mathcal{I}_1\) and ``conformal calibrating data'' \(\mathcal{I}_2\)
+        \pause
+    \item Let's train out model on \(\mathcal{I}_1\) to get \(\hat{f}(x)\)
+        \\ and then we can evaluate our model on \(\mathcal{I}_2\) to generate
+    \begin{equation*}
+        R_i = |\hat{f}(X_i)-Y_i| \text{ for } (X_i,Y_i) \in \mathcal{I}_2
+    \end{equation*}
+    \item These \(R_i\) are now exchangeable!!! So we can build a confidence interval for our next prediction using the ranking technique as before.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{The Split Conformal Prediction Algorithm}
+\begin{itemize}
+    \item For a new point $X_{n+1}$, compute $R_{n+1}(y) = |\hat{f}(X_{n+1})-y|$ for candidate values $y$
+    \pause
+    \item Our confidence set $C(X_{n+1})$ is all values of $y$ where $R_{n+1}(y)$ is "not too large" compared to the calibration scores
+    \pause
+    \item Specifically: $y \in C(X_{n+1})$ if $R_{n+1}(y)$ is smaller than the $\lceil(1-\alpha)(n+1)\rceil$-th largest calibration score
+    \pause
+    \item This gives us valid $(1-\alpha)$ coverage by the rank arguments above!
+\end{itemize}
+\end{frame}
+
+\end{document}
