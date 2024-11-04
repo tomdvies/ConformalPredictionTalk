@@ -22,6 +22,8 @@
 \usepackage[utf8x]{inputenc}
 \usepackage{xcolor}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing}
 
 
 %     Machine learning models have become increasingly powerful, but their predictions often lack reliable uncertainty estimates.
@@ -77,22 +79,44 @@
 
 \section{Introduction}
 
+\bgroup
+\let\oldfootnoterule\footnoterule
+\def\footnoterule{\only<3->\oldfootnoterule}
 \begin{frame}{Motivation}
     \begin{itemize}
-        \item Machine learning appears to be able to solve most problems
-        % \begin{itemize}
-        % 	\item (\textit{lazy} $=$ \textit{to do things in the most efficient way})
-        % \end{itemize}
+        \item Machine learning appears hugely effective across many different problems
         \pause
         \item However we don't know how certain we are about the predictions we make
+        \begin{itemize}
+            \item A self-driving car needs to know when it's uncertain about an object
+            \item Medical diagnosis systems must express uncertainty in critical decisions
+        \end{itemize}
         \pause
-        \item Can we do this?
+        \item Deep learning is notorious for being overly confident\footnote<3->{Guo et al. ``On Calibration of Modern Neural Networks"}\footnote<3->{Begoli et al. ``The need for uncertainty quantification in machine-assisted medical decision making"}
+        \pause
+        \item Can we quantify uncertainty with minimal assumptions?
     \end{itemize}
 \end{frame}
+\egroup
+
+\begin{frame}{What is a Confidence Interval?}
+    \begin{itemize}
+        \item Informally a confidence interval is an interval which is expected to typically contain the parameter being estimated.
+        \pause
+        \item For example: ``The average height of 10 people is 170cm ± 5cm with 95\% confidence"
+        \pause
+        \item The confidence level (e.g. 95\%) tells us how often the interval contains the true value
+        \begin{itemize}
+            \item If we repeat the experiment many times, 95\% of the intervals will contain the true value
+        \end{itemize}
+        \pause
+        \item A wider interval gives you more "confidence" but gives you less precision about the location of the parameter
+    \end{itemize}
+\end{frame}
+
 % add context for underlying dist
 \begin{frame}{The Goal}
 \begin{itemize}
-
 \item Given any supervised machine learning algorithm that maps paired training examples to a function:
     \begin{equation}
         (X_1,Y_1),\ldots, (X_n,Y_n) \mapsto \hat{f}_{1:n}
@@ -152,24 +176,47 @@
 \begin{itemize}
     \item If we have \(n+1\) exchangeable random variables, we know their ranks are uniform
     \pause
-    \item Key insight: We can use this to build confidence intervals!
+    \item We can use this to build confidence intervals!
     \pause
     \item For a $(1-\alpha)$ confidence interval:
     \begin{itemize}
         \item We want $Z_{n+1}$ to be between the $\lceil \frac{\alpha}{2}(n+1) \rceil$-th and $\lfloor (1-\frac{\alpha}{2})(n+1) \rfloor$-th order statistics
     \end{itemize}
     \pause
-    \item Example: With n = 99 calibration points and $\alpha = 0.05$
-    \begin{itemize}
-        \item Lower bound: 3rd smallest value
-        \item Upper bound: 97th smallest value
-        \item Probability new point falls in this interval = $1-\alpha = 0.95$
-    \end{itemize}
-    \pause
     \item This works regardless of the underlying distribution!
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Visualizing the Interval}
+    \begin{itemize}
+        \item Assuming the variables are ordered as \(Z_1,Z_2,\ldots,Z_n\) we can visualise this as.
+    \end{itemize}
+    \vspace{10pt}
+    \begin{center}
+    \begin{tikzpicture}[scale=1.2]
+        % Draw the main horizontal line
+        \draw[-] (-4,0) -- (-0.5,0);
+        \draw[-] (0.5,0) -- (4,0);
+        
+        % Add ticks and labels for R values
+        % \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
+        \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
+            \draw (\x,0.2) -- (\x,-0.2);
+            \node[below] at (\x,-0.3) {$Z_{\i}$};
+        }
+        
+        % Add dots to indicate continuation
+        \node at (0,0) {$\cdots$};
+
+        % Add curly brace below
+        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-2.5,-1) -- (2.5,-1)
+            node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval for \(Z_{n+1}\)};
+        % Add curly brace above
+        \draw[decorate, decoration={brace, amplitude=10pt}] (-1.5,0.5) -- (1.5,0.5)
+            node[midway,above=10pt] {$1-\frac{4}{n}$ confidence interval for \(Z_{n+1}\)};
+    \end{tikzpicture}
+    \end{center}
+\end{frame}
 % \begin{frame}{Building Exchangeable Variables}
 % \begin{itemize}
 %     \item Let's apply this to machine learning predictions by trying to build some exchangeable random variables
@@ -182,6 +229,21 @@
 % \end{itemize}
 % \end{frame}
 
+\begin{frame}{An Example}
+\begin{itemize}
+    \item With n = 99 calibration points and $\alpha = 0.05$:
+    \begin{itemize}
+        \item Lower bound: 3rd smallest value
+        \item Upper bound: 97th smallest value
+        \item Probability new point falls in this interval = $1-\alpha = 0.95$
+    \end{itemize}
+    \pause
+    \item This gives us a concrete way to build prediction intervals!
+    \pause
+    \item And we still maintain our distribution-free guarantee
+\end{itemize}
+\end{frame}
+
 
 \begin{frame}{Building Exchangeable Variables}
 \begin{itemize}
@@ -189,13 +251,47 @@
         \pause
     \item We split our training pairs into ``pure training data'' \(\mathcal{I}_1\) and ``conformal calibrating data'' \(\mathcal{I}_2\)
         \pause
-    \item Let's train out model on \(\mathcal{I}_1\) to get \(\hat{f}(x)\)
+    \item Let's train our model on \(\mathcal{I}_1\) to get \(\hat{f}(x)\)
         \\ and then we can evaluate our model on \(\mathcal{I}_2\) to generate
     \begin{equation*}
         R_i = |\hat{f}(X_i)-Y_i| \text{ for } (X_i,Y_i) \in \mathcal{I}_2
     \end{equation*}
     \item These \(R_i\) are now exchangeable!!! So we can build a confidence interval for our next prediction using the ranking technique as before.
 \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Visualizing the Residuals}
+    \begin{itemize}
+        \item We know that the residuals must be positive so we only need to worry about one side of the interval.
+        \pause
+        \item Assuming the residuals are ordered as \(R_1,R_2,\ldots,R_n\) we can visualise this as.
+    \end{itemize}
+    \vspace{10pt}
+    \begin{center}
+    \begin{tikzpicture}[scale=1.2]
+        % Draw the main horizontal line
+        \draw[-] (-4,0) -- (-0.5,0);
+        \draw[-] (0.5,0) -- (4,0);
+        
+        % Add ticks and labels for R values
+        % \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
+        \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
+            \draw (\x,0.2) -- (\x,-0.2);
+            \node[below] at (\x,-0.3) {$R_{\i}$};
+        }
+        
+        % Add dots to indicate continuation
+        \node at (0,0) {$\cdots$};
+
+        % Add curly brace below
+        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-2.5,-2.5) -- (2.5,-2.5)
+        node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval};
+        % Add curly brace below
+        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-1.5,-1.2) -- (1.5,-1.2)
+        node[midway,below=10pt] {$1-\frac{4}{n}$ confidence interval};
+    \end{tikzpicture}
+    \end{center}
 \end{frame}
 
 
@@ -209,6 +305,114 @@
     \pause
     \item This gives us valid $(1-\alpha)$ coverage by the rank arguments above!
 \end{itemize}
+\end{frame}
+
+\begin{frame}{A Toy Example}
+    \begin{itemize}
+        \item Let's run a synthetic experiment to demonstrate conformal prediction
+        \pause
+        \item We'll generate data from:
+        \begin{itemize}
+            \item X drawn from Uniform(-5, 5)
+            \item Y follows a cubic relationship with noise:
+            \begin{equation*}
+                Y = 1 + \frac{1}{6}X^2 + \frac{1}{24}X^3 + \epsilon
+            \end{equation*}
+            where $\epsilon \sim \mathcal{N}(0, 0.2)$
+        \end{itemize}
+        \pause
+        \item This gives us ground truth to test drive our prediction intervals
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Visualizing the Data}
+    \begin{center}
+        \includegraphics[width=0.83\textwidth]{images/CubicPlot.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}{Linear Model with Conformal Intervals}
+    \begin{itemize}
+        \item Let's fit a linear model to this data - deliberately underfit!
+        \pause
+        \item We should see that our conformal confidence interval gives a reasonably large interval
+        \pause
+        \item The green region shows the 90\% prediction interval
+        \pause
+        \item Notice how:
+        \begin{itemize}
+            \item The intervals are valid despite model misspecification
+            \item The intervals are very wide - we can't predict well so have high uncertainty
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Linear Fit with Conformal Intervals}
+    \begin{center}
+        \includegraphics[width=0.87\textwidth]{images/LinearFit.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}{Linear Model with Conformal Intervals}
+    \begin{itemize}
+        \item Let's now fit a cubic model to this data - this should give a much better fit
+        \pause
+        \item We should see a small prediction interval
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Cubic Fit with Conformal Intervals}
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{images/CubicFit.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}{Confidence Interval Size vs Model Complexity}
+    \begin{center}
+        \begin{tabular}{|c|c|}
+            \hline
+            Polynomial Degree & CI Width (lower is better)\\
+            \hline
+            0 (Constant) & 5.03 \\
+            2 (Linear) & 3.82 \\
+            2 (Quadratic) & 2.40 \\
+            3 (Cubic) & 0.552 \\
+            4 (Quartic) & 0.583 \\
+            5 (Quintic) & 0.601 \\
+            \hline
+        \end{tabular}
+    \end{center}
+    \begin{itemize}
+        \item Notice how the confidence interval width:
+        \begin{itemize}
+            \item Decreases as we move from underfitting (degree 0) to good fit (degree 3)
+            \item Starts increasing again with higher degrees due to overfitting
+        \end{itemize}
+        \pause
+        \item This shows that we can indeed use this to do model selection!
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Code}
+    All of the conformal prediction was 9 lines of code!
+    \begin{lstlisting}[language=Python]
+def get_conformal_predictor(x, y, degree=3):
+    x_train, x_calib, y_train, y_calib = train_test_split(
+        x, y, test_size=0.5, random_state=42
+    )
+
+    coeffs = np.polyfit(x_train, y_train, degree)
+
+    y_pred_calib = np.polyval(coeffs, x_calib)
+    residuals = np.abs(y_calib - y_pred_calib)
+
+    def confinterval(x_new, alpha=0.9):
+        y_pred = np.polyval(coeffs, x_new)
+        q = np.quantile(residuals, alpha)
+        return y_pred - q, y_pred + q
+
+    return coeffs, confinterval
+    \end{lstlisting}
 \end{frame}
 
 \end{document}
