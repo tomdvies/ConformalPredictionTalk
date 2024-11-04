@@ -66,9 +66,12 @@
 \begin{document}
 \begin{frame}
     \titlepage
-    \begin{textblock*}{\textwidth}(0cm,4.3cm) % Adjust these coordinates as needed
+    % \begin{textblock*}{\textwidth}(4.7cm,2cm) % Adjust these coordinates as needed
+    \vspace{-20pt}
+    \begin{center}
         \includegraphics[width=0.3\textwidth]{images/EdinAILogo.png}
-    \end{textblock*}
+    \end{center}
+    % \end{textblock*}
 \end{frame}
 
 % Uncomment these lines for an automatically generated outline.
@@ -103,14 +106,11 @@
     \begin{itemize}
         \item Informally a confidence interval is an interval which is expected to typically contain the parameter being estimated.
         \pause
-        \item For example: ``The average height of 10 people is 170cm ± 5cm with 95\% confidence"
-        \pause
         \item The confidence level (e.g. 95\%) tells us how often the interval contains the true value
-        \begin{itemize}
-            \item If we repeat the experiment many times, 95\% of the intervals will contain the true value
-        \end{itemize}
         \pause
-        \item A wider interval gives you more "confidence" but gives you less precision about the location of the parameter
+        \item If we repeat the experiment many times, 95\% of the intervals will contain the true value
+        \pause
+        \item A wider interval gives you more ``confidence" but gives you less precision about the location of the parameter
     \end{itemize}
 \end{frame}
 
@@ -133,6 +133,46 @@
 
 \end{itemize}
 \end{frame}
+
+
+\begin{frame}{The Classical MLE Approach}
+\begin{itemize}
+    \item If we know the underlying distribution family, we can use Maximum Likelihood Estimation
+    \pause
+    \item For example, with linear regression we assume:
+    \begin{equation*}
+        Y = X\beta + \epsilon, \quad \epsilon \sim \mathcal{N}(0,\sigma^2)
+    \end{equation*}
+    \pause
+    \item The MLE gives us asymptotically valid confidence intervals:
+    \begin{equation*}
+        \hat{Y} \pm z_{1-\alpha/2}\hat{\sigma}
+    \end{equation*}
+    \pause
+    \item But what if our distributional assumptions are wrong?
+    \begin{itemize}
+        \item Non-normal errors
+        \item Non constant variance
+        \item Model misspecification
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{No Asymptotic Results Needed!}
+    These results also need infinite amounts of data for the confidence interval to be valid
+    \begin{center}
+        \begin{tikzpicture}
+            \node[anchor=center] (image) at (0,0) {\includegraphics[width=0.5\textwidth]{images/buzz.jpg}};
+            \node[anchor=center] at (0,-3.1) {\Large To Infinity and Beyond!};
+            % Add red cross over both image and text
+            \pause
+            \draw[red,line width=10pt] (-3.2,2.5) -- (3.2,-2.5);
+            \draw[red,line width=10pt] (-3.2,-2.5) -- (3.2,2.5);
+        \end{tikzpicture}
+    \end{center}
+    \visible<3->{We can do better!}
+\end{frame}
+
 
 \section{Rank Statistics}
 
@@ -265,7 +305,7 @@
     \begin{itemize}
         \item We know that the residuals must be positive so we only need to worry about one side of the interval.
         \pause
-        \item Assuming the residuals are ordered as \(R_1,R_2,\ldots,R_n\) we can visualise this as.
+        \item Assuming the residuals are ordered as \(0,R_1,R_2,\ldots,R_n\) we can visualise this as.
     \end{itemize}
     \vspace{10pt}
     \begin{center}
@@ -275,8 +315,10 @@
         \draw[-] (0.5,0) -- (4,0);
         
         % Add ticks and labels for R values
-        % \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
-        \foreach \x/\i in {-3.5/1,-2.5/2,-1.5/3,1.5/{n-2},2.5/{n-1},3.5/n} {
+        \draw (-4,0.2) -- (-4,-0.2);
+        \node[below] at (-4,-0.3) {$0$};
+        
+        \foreach \x/\i in {-3/1,-2/2,-1/3,1/{n-2},2/{n-1},3/n} {
             \draw (\x,0.2) -- (\x,-0.2);
             \node[below] at (\x,-0.3) {$R_{\i}$};
         }
@@ -284,12 +326,15 @@
         % Add dots to indicate continuation
         \node at (0,0) {$\cdots$};
 
-        % Add curly brace below
-        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-2.5,-2.5) -- (2.5,-2.5)
-        node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval};
-        % Add curly brace below
-        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-1.5,-1.2) -- (1.5,-1.2)
-        node[midway,below=10pt] {$1-\frac{4}{n}$ confidence interval};
+        % % Add curly brace below - from 0 to R_{n-1}
+        % \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-4,-2.5) -- (2,-2.5)
+        % node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval};
+        % Add curly brace below - from 0 to R_{n-2}
+        \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-4,-1.2) -- (1,-1.2)
+            node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval for \(R_{n+1}\)};
+        % Add curly brace above
+        \draw[decorate, decoration={brace, amplitude=10pt}] (-4,0.5) -- (2,0.5)
+            node[midway,above=10pt] {$1-\frac{1}{n}$ confidence interval for \(R_{n+1}\)}; 
     \end{tikzpicture}
     \end{center}
 \end{frame}
@@ -374,7 +419,7 @@
             Polynomial Degree & CI Width (lower is better)\\
             \hline
             0 (Constant) & 5.03 \\
-            2 (Linear) & 3.82 \\
+            1 (Linear) & 3.82 \\
             2 (Quadratic) & 2.40 \\
             3 (Cubic) & 0.552 \\
             4 (Quartic) & 0.583 \\
@@ -415,4 +460,21 @@ def get_conformal_predictor(x, y, degree=3):
     \end{lstlisting}
 \end{frame}
 
+\begin{frame}{What's Next?}
+    \begin{itemize}
+        \item We can generalise our \(R_i\)s to be measures of a general ``conformity score" \(V(x,y)\) and then\\
+            \begin{equation*}
+                R_i = V(X_i,Y_i) \left(= |\hat{f}(X_i) - Y_i| \text{ in this talk}\right)
+            \end{equation*}
+        \item All of our results still hold - there is nothing special about the absolute value. We can use this to build \(x\) adaptive predictive intervals (this is called Locally-Weighted Conformal Inference)\footnote{Lei et al. ``Distribution-Free Predictive Inference For Regression''}.
+        \item Full Conformal Regression
+        \item Leave one covariate out (LOCO) Conformal Regression 
+    \end{itemize}
+\end{frame}
+\begin{frame}{Locally Adaptive Conformal Inference}
+    Setup is the same as before, however now the noise (\(\epsilon\)) has non constant variance.
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{images/CubicHetero.png}
+    \end{center}
+\end{frame}
 \end{document}
