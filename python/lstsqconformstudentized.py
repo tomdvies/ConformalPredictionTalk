@@ -9,11 +9,61 @@ matplotlib.rcParams.update({"font.size": 12})
 # np.random.seed(42)
 
 
-def estimate_sigma(x, residuals, x_eval, bandwidth=0.7):
-    """RBF Kernel GP regression for standard deviation"""
-    weights = np.exp(-0.5 * ((x_eval.reshape(-1, 1) - x.reshape(1, -1)) / bandwidth) ** 2)
-    sigma = np.sqrt(np.sum(weights * residuals.reshape(1, -1), axis=1) / np.sum(weights, axis=1))
+def estimate_sigma(x, residuals, x_eval, window_size=1.0):
+    """Estimate local standard deviation using sliding window average
+
+    Args:
+        x: Input locations where we have residuals
+        residuals: Squared residuals from the fit
+        x_eval: Points where we want to estimate sigma
+        window_size: Size of local window for averaging
+
+    Returns:
+        sigma: Estimated standard deviation at each x_eval point
+    """
+    sigma = np.zeros(len(x_eval))
+
+    for i, xi in enumerate(x_eval):
+        # Find points within the window
+        mask = np.abs(x - xi) <= window_size
+
+        # Need at least 3 points to estimate variance
+        if np.sum(mask) < 3:
+            window_size_i = window_size
+            while np.sum(mask) < 3:
+                window_size_i *= 1.5
+                mask = np.abs(x - xi) <= window_size_i
+
+        # Local average of squared residuals
+        sigma[i] = np.sqrt(np.mean(residuals[mask]))
+
     return sigma
+
+
+def estimate_sigma_smooth(x, residuals, x_eval, bandwidth=1.0):
+    """Estimate local standard deviation using Gaussian kernel smoothing
+
+    Args:
+        x: Input locations where we have residuals
+        residuals: Squared residuals from the fit
+        x_eval: Points where we want to estimate sigma
+        bandwidth: Kernel bandwidth parameter
+
+    Returns:
+        sigma: Estimated standard deviation at each x_eval point
+    """
+    sigma = np.zeros(len(x_eval))
+
+    for i, xi in enumerate(x_eval):
+        # Gaussian kernel weights
+        weights = np.exp(-0.5 * ((x - xi) / bandwidth) ** 2)
+        weights = weights / np.sum(weights)  # Normalize weights
+
+        # Weighted average of squared residuals
+        sigma[i] = np.sqrt(np.sum(weights * residuals))
+
+    return sigma
+
 
 def get_conformal_predictor(x, y, degree=3):
     """
@@ -38,24 +88,24 @@ def get_conformal_predictor(x, y, degree=3):
     # Get predictions on calibration set
     y_pred_calib = np.polyval(coeffs, x_calib)
     raw_residuals = y_calib - y_pred_calib
-    
+
     # Estimate local standard deviation
-    squared_residuals = raw_residuals ** 2
-    sigma_calib = estimate_sigma(x_calib, squared_residuals, x_calib)
-    
+    squared_residuals = raw_residuals**2
+    sigma_calib = estimate_sigma_smooth(x_calib, squared_residuals, x_calib)
+
     # Compute studentized residuals
     studentized_residuals = np.abs(raw_residuals / sigma_calib)
 
     def confinterval(x_new, alpha=0.9):
         """Generate prediction intervals for new x values."""
         y_pred = np.polyval(coeffs, x_new)
-        
+
         # Estimate sigma at new points
-        sigma_new = estimate_sigma(x_calib, squared_residuals, x_new)
-        
+        sigma_new = estimate_sigma_smooth(x_calib, squared_residuals, x_new)
+
         # Get quantile of studentized residuals
         q = np.quantile(studentized_residuals, alpha)
-        
+
         # Scale intervals by local sigma
         return y_pred - q * sigma_new, y_pred + q * sigma_new
 
@@ -68,9 +118,10 @@ def mean_function(x):
 
 def sample_data(n_samples, xstart=-5, xend=5, noisevar=0.2):
     x = np.random.uniform(xstart, xend, n_samples)
-    noise = np.random.normal(0, noisevar*(1), x.shape)
+    noise = np.random.normal(0, noisevar * (1 + np.abs(x) ** 2), x.shape)
     y = mean_function(x) + noise
     return x, y
+
 
 # Generate synthetic data
 xstart = -5

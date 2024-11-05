@@ -250,10 +250,10 @@
 
         % Add curly brace below
         \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-2.5,-1) -- (2.5,-1)
-            node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval for \(Z_{n+1}\)};
+            node[midway,below=10pt] {$1-\frac{2}{n+1}$ confidence interval for \(Z_{n+1}\)};
         % Add curly brace above
         \draw[decorate, decoration={brace, amplitude=10pt}] (-1.5,0.5) -- (1.5,0.5)
-            node[midway,above=10pt] {$1-\frac{4}{n}$ confidence interval for \(Z_{n+1}\)};
+            node[midway,above=10pt] {$1-\frac{4}{n+1}$ confidence interval for \(Z_{n+1}\)};
     \end{tikzpicture}
     \end{center}
 \end{frame}
@@ -331,10 +331,10 @@
         % node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval};
         % Add curly brace below - from 0 to R_{n-2}
         \draw[decorate, decoration={brace, amplitude=10pt, mirror}] (-4,-1.2) -- (1,-1.2)
-            node[midway,below=10pt] {$1-\frac{2}{n}$ confidence interval for \(R_{n+1}\)};
+            node[midway,below=10pt] {$1-\frac{2}{n+1}$ confidence interval for \(R_{n+1}\)};
         % Add curly brace above
         \draw[decorate, decoration={brace, amplitude=10pt}] (-4,0.5) -- (2,0.5)
-            node[midway,above=10pt] {$1-\frac{1}{n}$ confidence interval for \(R_{n+1}\)}; 
+            node[midway,above=10pt] {$1-\frac{1}{n+1}$ confidence interval for \(R_{n+1}\)}; 
     \end{tikzpicture}
     \end{center}
 \end{frame}
